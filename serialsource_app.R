@@ -29,7 +29,7 @@ con_init<-function(){
   
   ports<-listPorts()
   con <- serialConnection(name = "test_con",
-                          port = ports[2],
+                          port = ports[1],
                           mode = "115200,n,8,1",
                           buffering = "none",
                           handshake = "rtscts",
@@ -279,3 +279,129 @@ find_rfd<-function(forcetime_df,f1_df){
   return(rfd)
 }
 
+## function 9:
+## Plotting y vs x with a point of interest 
+## assumes the point of interest is already found and saved in a dataframe
+plot_poi_compare<-function(df,df_poi,df2,df2_poi,title,x_axis,y_axis,x_lab,y_lab,poi_lab){
+  x_col_index<-str_detect(names(df),paste("\\b",x_axis,"\\b",sep=""))
+  y_col_index<-str_detect(names(df),paste("\\b",y_axis,"\\b",sep=""))
+  
+  x_col_index_poi<-str_detect(names(df_poi),paste("\\b",x_axis,"\\b",sep=""))
+  y_col_index_poi<-str_detect(names(df_poi),paste("\\b",y_axis,"\\b",sep=""))
+  
+  x2_col_index<-str_detect(names(df2),paste("\\b",x_axis,"\\b",sep=""))
+  y2_col_index<-str_detect(names(df2),paste("\\b",y_axis,"\\b",sep=""))
+  
+  x2_col_index_poi<-str_detect(names(df2_poi),paste("\\b",x_axis,"\\b",sep=""))
+  y2_col_index_poi<-str_detect(names(df2_poi),paste("\\b",y_axis,"\\b",sep=""))
+  
+  p<-ggplot()+
+    geom_line(df, aes(as.numeric(unlist(df[x_col_index])),
+                      as.numeric(unlist(df[y_col_index]))))+
+    geom_line(df2, aes(as.numeric(unlist(df2[x2_col_index])),
+                      as.numeric(unlist(df2[y2_col_index]))))+
+    annotate("point", x=as.numeric(unlist(df_poi[x_col_index_poi])), 
+             y=as.numeric(unlist(df_poi[y_col_index_poi])), colour="red")+
+    annotate("point", x=as.numeric(unlist(df2_poi[x2_col_index_poi])), 
+             y=as.numeric(unlist(df2_poi[y2_col_index_poi])), colour="red")+
+    geom_text(aes(x=as.numeric(unlist(df_poi[x_col_index_poi])),
+                  y=as.numeric(unlist(df_poi[y_col_index_poi])),
+                  label=paste(poi_lab,as.numeric(unlist(df_poi[y_col_index_poi])),sep=" ")),
+              nudge_y = 5,
+              nudge_x = 0.1,
+              color="black")+
+    geom_text(aes(x=as.numeric(unlist(df2_poi[x2_col_index_poi])),
+                  y=as.numeric(unlist(df2_poi[y2_col_index_poi])),
+                  label=paste(poi_lab,as.numeric(unlist(df2_poi[y2_col_index_poi])),sep=" ")),
+              nudge_y = 5,
+              nudge_x = 0.1,
+              color="black")+
+    xlab(x_lab) + ylab(y_lab)+ 
+    ggtitle(title)+
+    theme_bw() + theme(panel.border = element_blank(), 
+                       panel.grid.major = element_blank(),
+                       panel.grid.minor = element_blank(), 
+                       axis.line = element_line(colour = "black"))
+  
+  return(p)
+}
+
+
+## function 10:
+## Plotting y vs x with 2 points of interest 
+## assumes the point of interests are already found and saved in a dataframes
+plot_2poi_compare<-function(df,df_poi,df_poi2,df2,df2_poi,df2_poi2,title,x_axis,y_axis,
+                    x_lab,y_lab,poi_lab,poi_lab2){
+  ## find index for the main data and pois since it is possible 
+  ## that dataframes have different column sizes
+  
+  x_col_index<-str_detect(names(df),paste("\\b",x_axis,"\\b",sep=""))
+  y_col_index<-str_detect(names(df),paste("\\b",y_axis,"\\b",sep=""))
+  
+  x_col_index_poi<-str_detect(names(df_poi),paste("\\b",x_axis,"\\b",sep=""))
+  y_col_index_poi<-str_detect(names(df_poi),paste("\\b",y_axis,"\\b",sep=""))
+  
+  x_col_index_poi2<-str_detect(names(df_poi2),paste("\\b",x_axis,"\\b",sep=""))
+  y_col_index_poi2<-str_detect(names(df_poi2),paste("\\b",y_axis,"\\b",sep=""))
+  
+  x2_col_index<-str_detect(names(df2),paste("\\b",x_axis,"\\b",sep=""))
+  y2_col_index<-str_detect(names(df2),paste("\\b",y_axis,"\\b",sep=""))
+  
+  x2_col_index_poi<-str_detect(names(df2_poi),paste("\\b",x_axis,"\\b",sep=""))
+  y2_col_index_poi<-str_detect(names(df2_poi),paste("\\b",y_axis,"\\b",sep=""))
+  
+  x2_col_index_poi2<-str_detect(names(df2_poi2),paste("\\b",x_axis,"\\b",sep=""))
+  y2_col_index_poi2<-str_detect(names(df2_poi2),paste("\\b",y_axis,"\\b",sep=""))
+  colors<-c("Current/Existing Data" = "blue", "Comparison Data" = "red")
+  
+  p<-ggplot()+
+    geom_line(df, mapping=aes(as.numeric(unlist(df[x_col_index])),
+                  as.numeric(unlist(df[y_col_index])),color="Current/Existing Data"))+
+    geom_line(df2, mapping=aes(as.numeric(unlist(df2[x2_col_index])),
+                    as.numeric(unlist(df2[y2_col_index])),color="Comparison Data"))+
+    labs(x = x_lab, y = y_lab, color = "Legend")+
+    ggtitle(title)+
+    theme_bw() + theme(panel.border = element_blank(), 
+                       panel.grid.major = element_blank(),
+                       panel.grid.minor = element_blank(), 
+                       axis.line = element_line(colour = "black"))+
+    scale_color_manual(values = colors)+
+    annotate("point", x=as.numeric(unlist(df_poi[x_col_index_poi])), 
+             y=as.numeric(unlist(df_poi[y_col_index_poi])), colour="black")+
+    geom_text(mapping=aes(x=as.numeric(unlist(df_poi[x_col_index_poi])),
+                  y=as.numeric(unlist(df_poi[y_col_index_poi])),
+                  label=paste(poi_lab,as.numeric(unlist(df_poi[y_col_index_poi])),sep=" ")),
+              nudge_y = 5,
+              nudge_x = 0.1,
+              color="black")+
+    annotate("point", x=as.numeric(unlist(df2_poi[x2_col_index_poi])), 
+             y=as.numeric(unlist(df2_poi[y2_col_index_poi])), colour="black")+
+    geom_text(mapping=aes(x=as.numeric(unlist(df2_poi[x2_col_index_poi])),
+                  y=as.numeric(unlist(df2_poi[y2_col_index_poi])),
+                  label=paste(poi_lab,as.numeric(unlist(df2_poi[y2_col_index_poi])),sep=" ")),
+              nudge_y = 5,
+              nudge_x = 0.1,
+              color="black")
+  if(nrow(df_poi2)>0){
+    p<-p+annotate("point", x=as.numeric(unlist(df_poi2[x_col_index_poi2])), 
+                  y=as.numeric(unlist(df_poi2[y_col_index_poi2])), colour="black")+
+      geom_text(mapping=aes(x=as.numeric(unlist(df_poi2[x_col_index_poi2])),
+                    y=as.numeric(unlist(df_poi2[y_col_index_poi2])),
+                    label=paste(poi_lab2,as.numeric(unlist(df_poi2[y_col_index_poi2])),sep=" ")),
+                nudge_y = 5,
+                color="black")
+  }
+  
+  if(nrow(df2_poi2)>0){
+    p<-p+annotate("point", x=as.numeric(unlist(df2_poi2[x2_col_index_poi2])), 
+                  y=as.numeric(unlist(df2_poi2[y2_col_index_poi2])), colour="black")+
+      geom_text(mapping=aes(x=as.numeric(unlist(df2_poi2[x2_col_index_poi2])),
+                    y=as.numeric(unlist(df2_poi2[y2_col_index_poi2])),
+                    label=paste(poi_lab2,as.numeric(unlist(df2_poi2[y2_col_index_poi2])),sep=" ")),
+                nudge_y = 5,
+                color="black")
+  }
+    
+  return(p)
+  
+}

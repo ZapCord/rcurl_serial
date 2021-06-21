@@ -8,7 +8,16 @@ server <- function(input, output, session) {
       
       shinyjs::disable(id="subjectpanel")
       shinyjs::enable(id="fileinputpanel")
-      output$fileinputpanel <- renderPrint({ input$existing_data_input })
+      output$fileinputpanel <- renderPrint({
+        if(!is.null(input$existing_data_input) && !is.null(input$compare_data_input)){
+          rbind(input$existing_data_input,input$compare_data_input)
+        }else if(!is.null(input$existing_data_input)){
+          input$existing_data_input
+        }else{
+          input$compare_data_input
+        }
+        
+        })
       
       if(is.null(input$existing_data_input) != TRUE){
         
@@ -48,7 +57,7 @@ server <- function(input, output, session) {
           
           rfd<-find_rfd(e_data,f1df)
           
-          rfd_out<-paste("The RFD is:", round(rfd,digits=2), "kg/s","or",
+          rfd_out<-paste("The Existing RFD is:", round(rfd,digits=2), "kg/s","or",
                          round(rfd*9.8,digits=2),"N/s",sep=" ")
           output$RFD<-renderText({rfd_out})
           
@@ -60,6 +69,52 @@ server <- function(input, output, session) {
           
           output$plot<-renderPlot({
             p
+          })
+          
+          if(is.null(input$compare_data_input) != TRUE){
+            
+            compare_data <- reactiveFileReader(1000,session,
+                                               filePath=toString(input$compare_data_input[4]),
+                                               readFunc=read.csv)
+            c_data<-compare_data()
+            c_data<-c_data[!names(c_data) %in% c("X")]
+            
+            max_c_data<-df_max(c_data,"Force")
+            data_dfdt2<-rfd_construction(c_data)
+            data_dfdt2_max<-df_max(data_dfdt2,"DFDT")
+            data_dfdt2_maxF<-df_max(data_dfdt2,"Force")
+            f1df2<-reactiveVal()
+            f1df2<-find_f1(data_dfdt2,input$noise)
+            question_rfd2<-any(is.na(f1df2))
+            if(nrow(f1df2)>0){
+              rfd2<-find_rfd(c_data,f1df2)
+              rfd2_out<-paste("The Comparison RFD is:", round(rfd2,digits=2), "kg/s","or",
+                             round(rfd2*9.8,digits=2),"N/s",sep=" ")
+              output$RFD<-renderText({paste(rfd_out,rfd2_out)})
+            }
+            pp_compare<-plot_2poi_compare(e_data,max_e_data,f1df,
+                              c_data,max_c_data,f1df2,
+                              "Force Development Comparison","Time","Force",
+                              "Time (s)","Force (kg)","Max","F1")
+            output$plot2<-renderPlot({
+              pp_compare
+            })
+            
+            output$savecompare<-downloadHandler(
+              filename=function(){paste(test_name,"-",subject,"compare.jpeg",sep="")},
+              content=function(file){
+                ggsave(file,plot=pp_compare)
+              }
+            )
+          }
+          
+          output$info <- renderPrint({
+            if(!is.null(input$plot_brush)){
+              brushedPoints(e_data, input$plot_brush, xvar="Time", yvar="Force")
+            } else{
+              nearPoints(e_data,xvar="Time",yvar="Force",input$plot_click,threshold = 10, maxpoints=1)
+            }
+            
           })
           
           pp<-plot_2poi(data_dfdt,f1df,data_dfdt_maxF,plot_name,"Time","DFDT",
@@ -90,6 +145,45 @@ server <- function(input, output, session) {
                       "Time (s)","Force (kg)","max")
           output$plot<-renderPlot({
             g
+          })
+          
+          if(is.null(input$compare_data_input) != TRUE){
+            
+            compare_data <- reactiveFileReader(1000,session,
+                                               filePath=toString(input$compare_data_input[4]),
+                                               readFunc=read.csv)
+            c_data<-compare_data()
+            c_data<-c_data[!names(c_data) %in% c("X")]
+            
+            max_c_data<-df_max(c_data,"Force")
+            data_dfdt2<-rfd_construction(c_data)
+            data_dfdt2_max<-df_max(data_dfdt2,"DFDT")
+            data_dfdt2_maxF<-df_max(data_dfdt2,"Force")
+            f1df2<-reactiveVal()
+            f1df2<-find_f1(data_dfdt2,input$noise)
+            question_rfd2<-any(is.na(f1df2))
+            pp_compare<-plot_2poi_compare(e_data,max_e_data,f1df,
+                                c_data,max_c_data,f1df2,
+                                "Force Development Comparison","Time","Force",
+                                "Time (s)","Force (kg)","Max","F1")
+            output$plot2<-renderPlot({
+              pp_compare
+            })
+            output$savecompare<-downloadHandler(
+              filename=function(){paste(test_name,"-",subject,"compare.jpeg",sep="")},
+              content=function(file){
+                ggsave(file,plot=pp_compare)
+              }
+            )
+          }
+          
+          output$info <- renderPrint({
+            if(!is.null(input$plot_brush)){
+              brushedPoints(e_data, input$plot_brush, xvar="Time", yvar="Force")
+            } else{
+              nearPoints(e_data,xvar="Time",yvar="Force",input$plot_click,threshold = 10, maxpoints=1)
+            }
+            
           })
           
           gg<-plot_poi(data_dfdt,data_dfdt_maxF,plot_name,"Time","DFDT",
@@ -157,7 +251,8 @@ server <- function(input, output, session) {
           active(FALSE)
           showModal(modalDialog(
             title = "Important message",
-            "Countdown completed! Apply force to bar for more than 1 second."
+            div(tags$b("GO!", style = "color: green; font-size: 288px;"))
+            , easyClose = TRUE
           ))
           #write.serialConnection(con,"t")
           #data<-con_read(con(),input$seconds)
@@ -225,6 +320,53 @@ server <- function(input, output, session) {
               p
             })
             
+            if(is.null(input$compare_data_input) != TRUE){
+              
+              compare_data <- reactiveFileReader(1000,session,
+                                               filePath=toString(input$compare_data_input[4]),
+                                               readFunc=read.csv)
+              c_data<-compare_data()
+              c_data<-c_data[!names(c_data) %in% c("X")]
+              
+              max_c_data<-df_max(c_data,"Force")
+              data_dfdt2<-rfd_construction(c_data)
+              data_dfdt2_max<-df_max(data_dfdt2,"DFDT")
+              data_dfdt2_maxF<-df_max(data_dfdt2,"Force")
+              f1df2<-reactiveVal()
+              f1df2<-find_f1(data_dfdt2,input$noise)
+              question_rfd2<-any(is.na(f1df2))
+              if(nrow(f1df2)>0){
+                rfd2<-find_rfd(c_data,f1df2)
+                rfd2_out<-paste("The Comparison RFD is:", round(rfd2,digits=2), "kg/s","or",
+                                round(rfd2*9.8,digits=2),"N/s",sep=" ")
+                output$RFD<-renderText({paste(rfd_out,rfd2_out)})
+              }
+              pp_compare<-plot_2poi_compare(data,max_data,f1df,
+                                c_data,max_c_data,f1df2,
+                                plot_name,"Time","Force",
+                                "Time (s)","Force (kg)","Max","F1")
+              
+              output$plot2<-renderPlot({
+                pp_compare
+              })
+              
+              output$savecompare<-downloadHandler(
+                filename=function(){paste(test_name_sub(),"-",subject(),"compare.jpeg",sep="")},
+                content=function(file){
+                  ggsave(file,plot=pp_compare)
+                }
+              )
+            }
+            
+            output$info <- renderPrint({
+              if(!is.null(input$plot_brush)){
+                brushedPoints(data, input$plot_brush, xvar="Time", yvar="Force")
+              } else{
+                nearPoints(data,xvar="Time",yvar="Force",input$plot_click,threshold = 10, maxpoints=1)
+              }
+              
+            })
+            
             pp<-plot_2poi(data_dfdt,f1df,data_dfdt_maxF,plot_name,"Time","DFDT",
                           "Time (s)","DFDT (kg/s)","F1","Max Force")
             output$DFDT<-renderPlot({
@@ -256,6 +398,47 @@ server <- function(input, output, session) {
               g
             })
             
+            if(is.null(input$compare_data_input) != TRUE){
+              
+              compare_data <- reactiveFileReader(1000,session,
+                                                 filePath=toString(input$compare_data_input[4]),
+                                                 readFunc=read.csv)
+              c_data<-compare_data()
+              c_data<-c_data[!names(c_data) %in% c("X")]
+              
+              max_c_data<-df_max(c_data,"Force")
+              data_dfdt2<-rfd_construction(c_data)
+              data_dfdt2_max<-df_max(data_dfdt2,"DFDT")
+              data_dfdt2_maxF<-df_max(data_dfdt2,"Force")
+              f1df2<-reactiveVal()
+              f1df2<-find_f1(data_dfdt2,input$noise)
+              question_rfd2<-any(is.na(f1df2))
+              
+              pp_compare<-plot_2poi_compare(data,max_data,f1df,
+                                            c_data,max_c_data,f1df2,
+                                            plot_name,"Time","Force",
+                                            "Time (s)","Force (kg)","Max","F1")
+              
+              output$plot2<-renderPlot({
+                pp_compare
+              })
+              
+              output$savecompare<-downloadHandler(
+                filename=function(){paste(test_name_sub(),"-",subject(),"compare.jpeg",sep="")},
+                content=function(file){
+                  ggsave(file,plot=pp_compare)
+                }
+              )
+            }
+            
+            output$info <- renderPrint({
+              if(!is.null(input$plot_brush)){
+                brushedPoints(data, input$plot_brush, xvar="Time", yvar="Force")
+              } else{
+                nearPoints(data,xvar="Time",yvar="Force",input$plot_click,threshold = 10, maxpoints=1)
+              }
+              
+            })
             gg<-plot_poi(data_dfdt,data_dfdt_maxF,plot_name,"Time","DFDT",
                          "Time (s)","Force (kg)","max")
             output$DFDT<-renderPlot({

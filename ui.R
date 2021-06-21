@@ -42,9 +42,14 @@ ui <- fluidPage(
     ),
     column(7, h3("Visualization"),
            tabsetPanel(
-             tabPanel("Plot",plotOutput("plot")),
+             tabPanel("Plot",plotOutput("plot", click = "plot_click", 
+                                        hover="plot_hover", 
+                                        brush=brushOpts("plot_brush",
+                                                        fill="ccc"))),
              tabPanel("Table",DT::dataTableOutput("table")),
-             tabPanel("DFDT",plotOutput("DFDT"))
+             tabPanel("DFDT",plotOutput("DFDT")),
+             tabPanel("Plot Compare", plotOutput("plot2"))
+             
              )
     )
     
@@ -58,6 +63,7 @@ ui <- fluidPage(
            downloadButton("savecsv", label = "Save Data"),
            downloadButton("savejpeg", label = "Save Graph"),
            downloadButton("saveDFDT", label = "Save DFDT"),
+           downloadButton("savecompare", label = "Save Compare Graph"),
            actionButton("refresh",label = "Refresh Page"),
            hr()
            ),
@@ -65,12 +71,17 @@ ui <- fluidPage(
                       lower noise."),
            numericInput("noise", "RFD noise in kg:", 
                         value=4,min=1,max=10,step=1),
-           textOutput("RFD"))
+           textOutput("RFD")),
+    column(4, helpText("Force vs Time Plot Information"),
+           verbatimTextOutput("info", placeholder = TRUE))
     
   ),
   fluidRow(
-    column(2,helpText("File Upload Status:"),
-           verbatimTextOutput("fileinputpanel")),
+    column(2,fileInput("compare_data_input",label=h5("Browse comparison data in .csv format")),
+           hr(),
+           helpText("File Upload Status:"),
+           verbatimTextOutput("fileinputpanel"),hr()
+           ),
     hr()
   )
   
